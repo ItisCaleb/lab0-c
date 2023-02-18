@@ -14,22 +14,34 @@
 /* Create an empty queue */
 struct list_head *q_new()
 {
-    return NULL;
+    struct list_head *q = malloc(sizeof(struct list_head));
+    if (!q)
+        return NULL;
+    INIT_LIST_HEAD(q);
+    return q;
 }
 
 /* Free all storage used by queue */
-void q_free(struct list_head *l) {}
+void q_free(struct list_head *l)
+{
+    if (!l)
+        return;
+    element_t *ele, *safe;
+    list_for_each_entry_safe (ele, safe, l, list)
+        q_release_element(ele);
+    free(l);
+}
 
 /* Insert an element at head of queue */
 bool q_insert_head(struct list_head *head, char *s)
 {
-    return true;
+    return false;
 }
 
 /* Insert an element at tail of queue */
 bool q_insert_tail(struct list_head *head, char *s)
 {
-    return true;
+    return false;
 }
 
 /* Remove an element from head of queue */
@@ -47,7 +59,14 @@ element_t *q_remove_tail(struct list_head *head, char *sp, size_t bufsize)
 /* Return number of elements in queue */
 int q_size(struct list_head *head)
 {
-    return -1;
+    if (head == NULL)
+        return 0;
+    int len = 0;
+    struct list_head *li;
+    list_for_each (li, head) {
+        len++;
+    }
+    return len;
 }
 
 /* Delete the middle node in queue */
