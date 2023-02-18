@@ -118,11 +118,11 @@ bool q_delete_mid(struct list_head *head)
     if (!head || list_empty(head))
         return false;
     int m_pos = q_size(head) / 2, pos = 0;
-    element_t *ele, *safe;
-    list_for_each_entry_safe (ele, safe, head, list)
+    struct list_head *li, *safe;
+    list_for_each_safe (li, safe, head)
         if (m_pos == pos++) {
-            list_del(&ele->list);
-            q_release_element(ele);
+            list_del(li);
+            q_release_element(list_entry(li, element_t, list));
             return true;
         }
     return false;
