@@ -117,21 +117,41 @@ bool q_delete_mid(struct list_head *head)
     // https://leetcode.com/problems/delete-the-middle-node-of-a-linked-list/
     if (!head || list_empty(head))
         return false;
-    int m_pos = q_size(head) / 2, pos = 0;
-    struct list_head *li, *safe;
-    list_for_each_safe (li, safe, head)
-        if (m_pos == pos++) {
-            list_del(li);
-            q_release_element(list_entry(li, element_t, list));
-            return true;
-        }
-    return false;
+    struct list_head *slow = head->next, *fast;
+    for (fast = head->next; fast != head && fast->next != head;
+         fast = fast->next->next) {
+        slow = slow->next;
+    }
+    list_del(slow);
+    q_release_element(list_entry(slow, element_t, list));
+    return true;
 }
 
 /* Delete all nodes that have duplicate string */
 bool q_delete_dup(struct list_head *head)
 {
     // https://leetcode.com/problems/remove-duplicates-from-sorted-list-ii/
+    if (!head || list_empty(head))
+        return false;
+    struct list_head *li, *safe;
+    list_for_each_safe (li, safe, head) {
+        element_t *ele = list_entry(li, element_t, list);
+        struct list_head *ptr = li->next;
+        bool flag = false;
+        while (ptr != head &&
+               strcmp(ele->value, list_entry(ptr, element_t, list)->value) ==
+                   0) {
+            list_del(ptr);
+            q_release_element(list_entry(ptr, element_t, list));
+            ptr = li->next;
+            flag = 1;
+        }
+        safe = li->next;
+        if (flag) {
+            list_del(li);
+            q_release_element(list_entry(li, element_t, list));
+        }
+    }
     return true;
 }
 
@@ -139,10 +159,30 @@ bool q_delete_dup(struct list_head *head)
 void q_swap(struct list_head *head)
 {
     // https://leetcode.com/problems/swap-nodes-in-pairs/
+    if (!head)
+        return;
+    struct list_head *li, *safe;
+    int i = 0;
+    list_for_each_safe (li, safe, head) {
+        if (i & 1) {
+            list_del(li);
+            list_add(li, li->prev->prev);
+        }
+        i++;
+    }
 }
 
 /* Reverse elements in queue */
-void q_reverse(struct list_head *head) {}
+void q_reverse(struct list_head *head)
+{
+    struct list_head *li, *safe, *last = head->prev;
+    list_for_each_safe (li, safe, head) {
+        if (li == last)
+            return;
+        list_del(li);
+        list_add(li, last);
+    }
+}
 
 /* Reverse the nodes of the list k at a time */
 void q_reverseK(struct list_head *head, int k)
