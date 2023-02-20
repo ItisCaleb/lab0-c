@@ -174,6 +174,8 @@ void q_swap(struct list_head *head)
 /* Reverse elements in queue */
 void q_reverse(struct list_head *head)
 {
+    if (!head)
+        return;
     struct list_head *li, *safe, *last = head->prev;
     list_for_each_safe (li, safe, head) {
         if (li == last)
