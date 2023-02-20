@@ -42,8 +42,12 @@
 
 #define ENOUGH_MEASURE 10000
 #define TEST_TRIES 10
+#define NUMBER_PERCENTILES 100
+#define TESTS 1 + NUMBER_PERCENTILES
 
-static t_context_t *t;
+static t_context_t *ttest_ctxs[TESTS];
+
+
 
 /* threshold values for Welch's t-test */
 enum {
@@ -56,6 +60,31 @@ static void __attribute__((noreturn)) die(void)
     exit(111);
 }
 
+static int cmp(const int64_t *a, const int64_t *b)
+{
+    return (int) (*a - *b);
+}
+
+static int64_t percentile(int64_t *a, double which, size_t size)
+{
+    qsort(a, size, sizeof(int64_t), (int (*)(const void *, const void *)) cmp);
+    size_t array_position = (size_t) ((double) size * (double) which);
+    assert(array_position >= 0);
+    assert(array_position < size);
+    return a[array_position];
+}
+
+static void prepare_percentiles(int64_t *percentiles, int64_t *exec_times)
+{
+    for (size_t i = 0; i < NUMBER_PERCENTILES; i++) {
+        percentiles[i] = percentile(
+            exec_times,
+            1 - (pow(0.5, 10 * (double) (i + 1) / NUMBER_PERCENTILES)),
+            N_MEASURES);
+    }
+}
+
+
 static void differentiate(int64_t *exec_times,
                           const int64_t *before_ticks,
                           const int64_t *after_ticks)
@@ -64,7 +93,10 @@ static void differentiate(int64_t *exec_times,
         exec_times[i] = after_ticks[i] - before_ticks[i];
 }
 
-static void update_statistics(const int64_t *exec_times, uint8_t *classes)
+static void update_statistics(const int64_t *exec_times,
+                              uint8_t *classes,
+                              int64_t *percentiles,
+                              t_context_t *ttest_ctxs[])
 {
     for (size_t i = 0; i < N_MEASURES; i++) {
         int64_t difference = exec_times[i];
@@ -73,12 +105,36 @@ static void update_statistics(const int64_t *exec_times, uint8_t *classes)
             continue;
 
         /* do a t-test on the execution time */
-        t_push(t, difference, classes[i]);
+        t_push(ttest_ctxs[0], difference, classes[i]);
+        for (size_t crop_index = 0; crop_index < NUMBER_PERCENTILES;
+             crop_index++) {
+            if (difference < percentiles[crop_index]) {
+                t_push(ttest_ctxs[crop_index + 1], difference, classes[i]);
+            }
+        }
     }
+}
+
+static size_t max_test()
+{
+    size_t ret = 0;
+    double max = 0;
+    for (size_t i = 0; i < TESTS; i++) {
+        if (ttest_ctxs[i]->n[0] > ENOUGH_MEASURE) {
+            double x = fabs(t_compute(ttest_ctxs[i]));
+            if (max < x) {
+                max = x;
+                ret = i;
+            }
+        }
+    }
+    return ret;
 }
 
 static bool report(void)
 {
+    size_t ret = max_test();
+    t_context_t *t = ttest_ctxs[ret];
     double max_t = fabs(t_compute(t));
     double number_traces_max_t = t->n[0] + t->n[1];
     double max_tau = max_t / sqrt(number_traces_max_t);
@@ -123,6 +179,7 @@ static bool doit(int mode)
     int64_t *exec_times = calloc(N_MEASURES, sizeof(int64_t));
     uint8_t *classes = calloc(N_MEASURES, sizeof(uint8_t));
     uint8_t *input_data = calloc(N_MEASURES * CHUNK_SIZE, sizeof(uint8_t));
+    int64_t *percentiles = calloc(NUMBER_PERCENTILES, sizeof(int64_t));
 
     if (!before_ticks || !after_ticks || !exec_times || !classes ||
         !input_data) {
@@ -133,7 +190,8 @@ static bool doit(int mode)
 
     bool ret = measure(before_ticks, after_ticks, input_data, mode);
     differentiate(exec_times, before_ticks, after_ticks);
-    update_statistics(exec_times, classes);
+    prepare_percentiles(percentiles, exec_times);
+    update_statistics(exec_times, classes, percentiles, ttest_ctxs);
     ret &= report();
 
     free(before_ticks);
@@ -141,6 +199,8 @@ static bool doit(int mode)
     free(exec_times);
     free(classes);
     free(input_data);
+    free(percentiles);
+
 
     return ret;
 }
@@ -148,13 +208,17 @@ static bool doit(int mode)
 static void init_once(void)
 {
     init_dut();
-    t_init(t);
+    for (int i = 0; i < TESTS; i++) {
+        t_init(ttest_ctxs[i]);
+    }
 }
 
 static bool test_const(char *text, int mode)
 {
     bool result = false;
-    t = malloc(sizeof(t_context_t));
+    for (int i = 0; i < TESTS; i++) {
+        ttest_ctxs[i] = (t_context_t *) malloc(sizeof(t_context_t));
+    }
 
     for (int cnt = 0; cnt < TEST_TRIES; ++cnt) {
         printf("Testing %s...(%d/%d)\n\n", text, cnt, TEST_TRIES);
@@ -166,12 +230,17 @@ static bool test_const(char *text, int mode)
         if (result)
             break;
     }
-    free(t);
+    for (int i = 0; i < TESTS; i++) {
+        free(ttest_ctxs[i]);
+    }
     return result;
 }
 
-#define DUT_FUNC_IMPL(op) \
-    bool is_##op##_const(void) { return test_const(#op, DUT(op)); }
+#define DUT_FUNC_IMPL(op)                \
+    bool is_##op##_const(void)           \
+    {                                    \
+        return test_const(#op, DUT(op)); \
+    }
 
 #define _(x) DUT_FUNC_IMPL(x)
 DUT_FUNCS
