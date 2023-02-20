@@ -263,7 +263,7 @@ int q_descend(struct list_head *head)
             sum++;
         } else {
             list_del(cur);
-            q_release_element(list_entry(cur, element_t, list));
+            q_release_element(ele);
             cur = safe->next;
         }
     } while (safe != head);
