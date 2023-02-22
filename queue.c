@@ -251,8 +251,10 @@ void q_sort(struct list_head *head)
 int q_descend(struct list_head *head)
 {
     // https://leetcode.com/problems/remove-nodes-from-linked-list/
-    if (!head || list_empty(head) || list_is_singular(head))
+    if (!head || list_empty(head))
         return 0;
+    else if (list_is_singular(head))
+        return 1;
     struct list_head *cur = head, *safe;
     element_t *max = NULL;
     int sum = 0;

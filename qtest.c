@@ -726,10 +726,10 @@ static bool do_descend(int argc, char *argv[])
     if (!current || !current->q)
         report(3, "Warning: Calling ascend on null queue");
     else
-        q_size(current->q);
+        cnt = q_size(current->q);
     error_check();
 
-    if (cnt < 2)
+    if (cnt == 1)
         report(3, "Warning: Calling ascend on single node");
     error_check();
 
