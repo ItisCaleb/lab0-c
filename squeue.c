@@ -1,5 +1,5 @@
 #include "squeue.h"
-#include <assert.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -22,7 +22,7 @@ void q_shuffle(struct list_head *head)
     struct list_head *old;
     do {
         old = head->next;
-        int rnd = rand_size(len);
+        int rnd = rand() % len;
         for (int i = rnd; i > 0; i--)
             old = old->next;
         list_move(head->prev, old->prev);
