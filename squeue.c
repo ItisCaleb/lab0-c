@@ -10,14 +10,13 @@ void q_shuffle(struct list_head *head)
         return;
     int len = q_size(head);
     struct list_head *ptr;
-    do {
+    while (len) {
         ptr = head->next;
-        int rnd = rand() % len;
-        for (int i = rnd; i > 0; i--)
+        for (int i = rand() % len; i > 0; i--)
             ptr = ptr->next;
         list_move_tail(ptr, head);
         len--;
-    } while (len != 0);
+    }
 }
 
 
