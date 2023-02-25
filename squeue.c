@@ -3,33 +3,21 @@
 #include <stdlib.h>
 #include <string.h>
 
-int rand_size(int size)
-{
-    int end = RAND_MAX / size;
-    end *= size;
-    int r;
-    while ((r = rand()) >= end)
-        ;
-    return r % size;
-}
 
 void q_shuffle(struct list_head *head)
 {
     if (!head || list_empty(head))
         return;
     int len = q_size(head);
-    LIST_HEAD(shuffled);
-    struct list_head *old;
+    struct list_head *ptr;
     do {
-        old = head->next;
+        ptr = head->next;
         int rnd = rand() % len;
         for (int i = rnd; i > 0; i--)
-            old = old->next;
-        list_move(head->prev, old->prev);
-        list_move(old, &shuffled);
+            ptr = ptr->next;
+        list_move_tail(ptr, head);
         len--;
     } while (len != 0);
-    list_splice_tail(&shuffled, head);
 }
 
 
