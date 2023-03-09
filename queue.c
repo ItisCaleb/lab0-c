@@ -52,18 +52,7 @@ bool q_insert_head(struct list_head *head, char *s)
 /* Insert an element at tail of queue */
 bool q_insert_tail(struct list_head *head, char *s)
 {
-    if (!head)
-        return false;
-    element_t *ele = malloc(sizeof(element_t));
-    if (!ele)
-        return false;
-    ele->value = strdup(s);
-    if (!ele->value) {
-        free(ele);
-        return false;
-    }
-    list_add_tail(&ele->list, head);
-    return true;
+    return q_insert_head(head->prev, s);
 }
 
 /* Remove an element from head of queue */
@@ -71,7 +60,7 @@ element_t *q_remove_head(struct list_head *head, char *sp, size_t bufsize)
 {
     if (!head || list_empty(head))
         return NULL;
-    element_t *ele = list_first_entry(head, element_t, list);
+    element_t *ele = list_entry(head->next, element_t, list);
     list_del(&ele->list);
     if (sp) {
         size_t len = strlen(ele->value);
@@ -85,17 +74,7 @@ element_t *q_remove_head(struct list_head *head, char *sp, size_t bufsize)
 /* Remove an element from tail of queue */
 element_t *q_remove_tail(struct list_head *head, char *sp, size_t bufsize)
 {
-    if (!head || list_empty(head))
-        return NULL;
-    element_t *ele = list_last_entry(head, element_t, list);
-    list_del(&ele->list);
-    if (sp) {
-        size_t len = strlen(ele->value);
-        len = len < bufsize - 1 ? len : bufsize - 1;
-        strncpy(sp, ele->value, len);
-        *(sp + len) = '\0';
-    }
-    return ele;
+    return q_remove_head(head->prev->prev, sp, bufsize);
 }
 
 /* Return number of elements in queue */
@@ -193,17 +172,18 @@ void q_reverseK(struct list_head *head, int k)
     LIST_HEAD(khead);
     khead.next = head;
     struct list_head *li, *safe;
-    int i = 0;
+    int i = k;
     list_for_each_safe (li, safe, head) {
-        int tmp = i % k;
-        if (tmp == 0) {
+        if (i == k) {
             khead.next->next = li;
             khead.next = li;
-        } else if (tmp == k - 1) {
+        } else if (i == 1) {
             khead.prev = li;
             q_reverse(&khead);
+            i = k;
+            continue;
         }
-        i++;
+        i--;
     }
 }
 
